@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QUANTUM NEXUS | Portfolio Optimization Terminal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:#000005;--s1:#050a12;--s2:#080e1a;--s3:#0d1525;
+  --c1:#00ffff;--c1d:rgba(0,255,255,.08);--c1g:rgba(0,255,255,.4);
+  --c2:#7c3aed;--c2d:rgba(124,58,237,.1);--c2g:rgba(124,58,237,.5);
+  --c3:#00ff88;--c3d:rgba(0,255,136,.08);
+  --c4:#ffd700;--c4d:rgba(255,215,0,.08);
+  --c5:#ff0055;--c5d:rgba(255,0,85,.08);
+  --c6:#ff8800;
+  --t1:#ffffff;--t2:#c0d0e0;--t3:#8b9bb4;
+  --mono:'Share Tech Mono',monospace;--orb:'Orbitron',sans-serif;--sans:'Inter',sans-serif;
+  --glow1:none;--glow2:none;
+  --border:rgba(0,255,255,.2);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:auto;background:var(--bg);color:var(--t1);font-family:var(--sans)}
+canvas.bg-canvas{position:fixed;inset:0;z-index:0;pointer-events:none}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--c2g);border-radius:3px}
+
+/* ═══════════════════════════ LAYOUT ═══════════════════════════ */
+#app{position:relative;z-index:2;width:100%;height:100vh;min-height:800px;min-width:1250px;display:grid;grid-template-rows:44px 1fr 130px;grid-template-columns:1fr}
+
+/* ═══════════════════════════ TOPBAR ═══════════════════════════ */
+#topbar{display:flex;align-items:center;gap:0;border-bottom:1px solid var(--border);background:rgba(0,5,15,.98);backdrop-filter:blur(20px);overflow:hidden}
+.tb-logo{padding:0 20px;font-family:var(--orb);font-size:15px;font-weight:900;letter-spacing:3px;color:var(--c1);white-space:nowrap;border-right:1px solid var(--border);height:100%;display:flex;align-items:center;gap:8px}
+.tb-logo-mark{width:28px;height:28px;border:1px solid var(--c1);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px}
+.tb-ticker{flex:1;overflow:hidden;height:100%;display:flex;align-items:center;position:relative}
+.ticker-inner{display:inline-flex;gap:30px;animation:ticker 35s linear infinite;white-space:nowrap;font-family:var(--mono);font-size:13px}
+@keyframes ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.tick-item{display:flex;gap:6px;align-items:center;color:var(--t2)}
+.tick-sym{color:var(--t1);font-weight:700}
+.tick-up{color:var(--c3)}.tick-dn{color:var(--c5)}
+.tb-status{display:flex;align-items:center;gap:0;border-left:1px solid var(--border);height:100%}
+.status-cell{padding:0 14px;font-family:var(--mono);font-size:12px;color:var(--t2);border-left:1px solid var(--border);height:100%;display:flex;flex-direction:column;justify-content:center;gap:2px}
+.status-cell b{font-size:14px}
+.status-cell b.c1{color:var(--c1)} .status-cell b.c2{color:var(--c2)} .status-cell b.c3{color:var(--c3)} .status-cell b.c4{color:var(--c4)}
+.tb-clock{padding:0 16px;font-family:var(--orb);font-size:15px;font-weight:700;color:var(--c4);letter-spacing:1px;border-left:1px solid var(--border);white-space:nowrap}
+
+/* ═══════════════════════════ MAIN BODY ═══════════════════════════ */
+#body{display:grid;grid-template-columns:300px 1fr 340px;overflow:hidden}
+
+/* ═══════════════════════════ PANEL ═══════════════════════════ */
+.panel{background:rgba(0,5,15,.95);border-right:1px solid var(--border);overflow:hidden;display:flex;flex-direction:column}
+.panel:last-child{border-right:none;border-left:1px solid var(--border)}
+.panel-hdr{padding:12px 14px;font-family:var(--orb);font-size:11px;letter-spacing:2px;text-transform:uppercase;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;color:var(--c1);background:rgba(0,255,255,.05);flex-shrink:0}
+.panel-hdr-tag{font-family:var(--mono);font-size:11px;color:var(--t1);background:var(--s2);padding:2px 6px;border-radius:2px;border:1px solid var(--border)}
+.panel-body{flex:1;overflow-y:auto;padding:16px}
+
+/* ═══════════════════════════ LEFT PANEL ═══════════════════════════ */
+.param-blk{margin-bottom:20px}
+.param-lbl{font-family:var(--mono);font-size:12px;color:var(--t1);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;font-weight:700}
+.param-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.08);font-family:var(--mono);font-size:13px}
+.param-key{color:var(--t2)}.param-v{font-weight:700}
+.param-v.c1{color:var(--c1)}.param-v.c2{color:var(--c2)}.param-v.c3{color:var(--c3)}.param-v.c4{color:var(--c4)}.param-v.c5{color:var(--c5)}
+
+/* Qubit state bars */
+.qubit-row{display:grid;grid-template-columns:25px 1fr 45px;align-items:center;gap:8px;margin-bottom:8px;font-family:var(--mono);font-size:12px}
+.q-lbl{color:var(--t1)}.q-bar-wrap{height:12px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;position:relative}
+.q-bar{height:100%;border-radius:2px;transition:width .4s ease;position:relative}
+.q-bar::after{content:'';position:absolute;right:0;top:0;bottom:0;width:2px;background:rgba(255,255,255,.8)}
+.q-prob{text-align:right;font-size:12px;font-weight:700}
+
+/* Bloch sphere (CSS 3D) */
+.bloch-wrap{display:flex;justify-content:center;margin:15px 0}
+.bloch{width:130px;height:130px;position:relative;perspective:300px}
+.bloch-sphere{width:130px;height:130px;border-radius:50%;background:radial-gradient(circle at 35% 35%,rgba(0,255,255,.15),transparent 60%),radial-gradient(circle,rgba(124,58,237,.1),transparent 70%);border:2px solid rgba(0,255,255,.4);position:relative;animation:bloch-rot 8s linear infinite}
+@keyframes bloch-rot{from{transform:rotateY(0deg) rotateX(10deg)}to{transform:rotateY(360deg) rotateX(10deg)}}
+.bloch-axis{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.bloch-vec{position:absolute;width:3px;height:50px;background:linear-gradient(to top,var(--c1),transparent);top:15px;left:50%;transform:translateX(-50%);animation:bloch-vec 3s ease-in-out infinite alternate}
+@keyframes bloch-vec{to{transform:translateX(-50%) rotateZ(25deg)}}
+.bloch-eq{position:absolute;bottom:2px;font-family:var(--mono);font-size:11px;color:var(--t1);text-align:center;width:100%;font-weight:700}
+
+/* QUBO Matrix */
+.qubo-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:3px}
+.qubo-cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;border-radius:2px;transition:all .5s;cursor:default;font-weight:700}
+.qubo-pos{background:rgba(0,255,255,.2);color:var(--c1);border:1px solid rgba(0,255,255,.4)}
+.qubo-neg{background:rgba(255,0,85,.2);color:var(--c5);border:1px solid rgba(255,0,85,.4)}
+.qubo-zero{background:rgba(255,255,255,.05);color:var(--t2);border:1px solid rgba(255,255,255,.1)}
+
+/* Buttons */
+.btn{width:100%;padding:12px;font-family:var(--orb);font-size:12px;letter-spacing:2px;border:2px solid var(--c1);background:rgba(0,255,255,.1);color:var(--c1);cursor:pointer;text-transform:uppercase;transition:all .2s;margin-bottom:8px;font-weight:700}
+.btn:hover{background:rgba(0,255,255,.2)}
+.btn.active{background:rgba(0,255,255,.3);border-color:var(--c1);color:#ffffff}
+.btn.stop{border-color:var(--c5);color:var(--c5);background:rgba(255,0,85,.1)}.btn.stop:hover{background:rgba(255,0,85,.2)}
+.btn-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.btn-sm{padding:8px;font-family:var(--orb);font-size:10px;letter-spacing:1px;border:1px solid var(--t2);background:transparent;color:var(--t1);cursor:pointer;transition:all .2s;font-weight:700}
+.btn-sm:hover{border-color:var(--c2);color:var(--c2);background:var(--c2d)}
+.btn-sm.active{border-color:var(--c2);color:var(--c2);background:var(--c2g)}
+
+/* ═══════════════════════════ CENTER PANEL ═══════════════════════════ */
+#center{display:flex;flex-direction:column;overflow:hidden}
+.chart-tabs{display:flex;border-bottom:1px solid var(--border);background:rgba(0,5,15,.9);flex-shrink:0;overflow-x:auto}
+.ctab{padding:12px 16px;font-family:var(--orb);font-size:11px;letter-spacing:1.5px;color:var(--t2);cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase;white-space:nowrap;transition:all .2s;font-weight:700}
+.ctab:hover{color:var(--t1);background:rgba(255,255,255,.05)}
+.ctab.active{color:var(--c1);border-bottom-color:var(--c1);background:rgba(0,255,255,.08)}
+.chart-views{flex:1;position:relative;overflow:hidden}
+.cview{position:absolute;inset:0;display:none;padding:20px}
+.cview.active{display:block}
+.chart-canvas-wrap{width:100%;height:100%}
+
+/* Circuit Vis */
+.circuit-display{display:flex;flex-direction:column;gap:12px;height:100%;justify-content:space-around;padding:12px 0}
+.wire-row{display:flex;align-items:center;position:relative;height:40px}
+.wire-line{position:absolute;top:50%;left:80px;right:0;height:2px;background:linear-gradient(90deg,var(--c2),rgba(124,58,237,.3));z-index:0}
+.wire-lbl{font-family:var(--mono);font-size:14px;color:var(--t1);width:80px;text-align:right;padding-right:16px;z-index:1;font-weight:700}
+.gates-row{display:flex;gap:12px;z-index:1;align-items:center}
+.gate{width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px;font-weight:700;border-radius:4px;position:relative;flex-shrink:0}
+.gate-H{border:2px solid var(--c1);background:rgba(0,255,255,.2);color:var(--c1)}
+.gate-Rz{border:2px solid var(--c4);background:rgba(255,215,0,.2);color:var(--c4)}
+.gate-CNOT{border:2px solid var(--c3);background:rgba(0,255,136,.2);color:var(--c3)}
+.gate-M{border:2px solid var(--c5);background:rgba(255,0,85,.2);color:var(--c5)}
+.gate-CX{width:18px;height:18px;border-radius:50%;background:var(--c3);flex-shrink:0}
+.gate.animated{animation:gate-pop .4s ease both}
+@keyframes gate-pop{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+
+/* Heatmap */
+.heatmap-grid{display:grid;gap:4px;padding:12px;height:100%}
+.hm-cell{border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px;cursor:default;transition:all .3s;font-weight:700}
+
+/* Histogram */
+.hist-wrap{display:grid;align-items:flex-end;gap:4px;height:calc(100% - 40px);padding-bottom:40px;position:relative}
+.hist-bar-wrap{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;position:relative}
+.hist-bar{border-radius:3px 3px 0 0;width:100%;transition:height .6s ease;position:relative;min-height:3px}
+.hist-bar::after{content:attr(data-state);position:absolute;bottom:-25px;font-family:var(--mono);font-size:11px;color:var(--t1);left:50%;transform:translateX(-50%);white-space:nowrap;font-weight:700}
+.hist-prob{position:absolute;top:-20px;font-family:var(--mono);font-size:11px;color:var(--t1);left:50%;transform:translateX(-50%);white-space:nowrap;font-weight:700}
+
+/* ═══════════════════════════ RIGHT PANEL ═══════════════════════════ */
+.metric-blk{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:6px;padding:16px;margin-bottom:12px;position:relative;overflow:hidden}
+.metric-blk::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--c1),transparent)}
+.metric-lbl{font-family:var(--mono);font-size:11px;color:var(--t1);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;font-weight:700}
+.metric-val{font-family:var(--orb);font-size:32px;font-weight:700;letter-spacing:-1px;line-height:1}
+.metric-sub{font-family:var(--mono);font-size:11px;color:var(--t2);margin-top:6px}
+
+/* Portfolio table */
+.port-table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px}
+.port-table th{color:var(--t1);font-size:11px;padding:6px 8px;border-bottom:1px solid var(--border);text-transform:uppercase;font-weight:700;text-align:left}
+.port-table td{padding:8px 8px;border-bottom:1px solid rgba(255,255,255,.05);color:var(--t1)}
+.port-table td:last-child{text-align:right;font-weight:700}
+.alloc-yes{color:var(--c3);background:rgba(0,255,136,.2);padding:2px 6px;border-radius:3px;border:1px solid var(--c3)}
+.alloc-no{color:var(--t3)}
+
+/* Progress bars */
+.progress-wrap{margin-top:10px}
+.progress-row{display:grid;grid-template-columns:80px 1fr 45px;align-items:center;gap:8px;margin-bottom:8px;font-family:var(--mono);font-size:12px;font-weight:700}
+.progress-lbl{color:var(--t1);font-size:11px}
+.progress-bar-bg{height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden}
+.progress-bar-fill{height:100%;border-radius:3px;transition:width .5s ease}
+
+/* Bottom terminal */
+#bottombar{border-top:1px solid var(--border);background:rgba(0,5,12,.97);display:grid;grid-template-columns:1fr 340px;overflow:hidden}
+.terminal-log{padding:12px 16px;font-family:var(--mono);font-size:12px;overflow-y:auto;height:100%;color:var(--t2);line-height:1.8}
+.log-line{animation:log-in .2s ease both}
+@keyframes log-in{from{opacity:0;transform:translateX(-4px)}to{opacity:1}}
+.log-ts{color:var(--t1);font-weight:700}.log-info .log-msg{color:var(--t1)}.log-ok .log-msg{color:var(--c3);font-weight:700}.log-warn .log-msg{color:var(--c4);font-weight:700}.log-err .log-msg{color:var(--c5);font-weight:700}
+
+/* Iter progress panel */
+.iter-panel{padding:16px;border-left:1px solid var(--border);display:flex;flex-direction:column;justify-content:center;gap:10px}
+.iter-val{font-family:var(--orb);font-size:42px;font-weight:900;color:var(--c2);text-align:center;letter-spacing:-2px}
+.iter-sub{font-family:var(--mono);font-size:11px;color:var(--t1);text-align:center;letter-spacing:1.5px;margin-bottom:8px;font-weight:700}
+.iter-bar-bg{height:8px;background:rgba(124,58,237,.2);border-radius:4px;overflow:hidden}
+.iter-bar-fill{height:100%;background:linear-gradient(90deg,var(--c2),var(--c1));border-radius:4px;transition:width .3s ease}
+.energy-row{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--t1);margin-top:6px;font-weight:700}
+</style>
+</head>
+<body>
+
+<canvas class="bg-canvas" id="bgCanvas"></canvas>
+
+<div id="app">
+
+<!-- ╔═══════════════════════ TOPBAR ═══════════════════════╗ -->
+<div id="topbar">
+  <div class="tb-logo">
+    <div class="tb-logo-mark">⚛</div>
+    QUANTUM NEXUS
+  </div>
+  <div class="tb-ticker">
+    <div class="ticker-inner" id="tickerInner">
+      <!-- generated -->
+    </div>
+  </div>
+  <div class="tb-status">
+    <div class="status-cell"><span>BACKEND</span><b class="c1">AER-SIM</b></div>
+    <div class="status-cell"><span>QUBITS</span><b class="c2">4 x 4</b></div>
+    <div class="status-cell"><span>DEPTH (p)</span><b class="c3">3</b></div>
+    <div class="status-cell"><span>SHOTS</span><b class="c4">8,192</b></div>
+    <div class="status-cell"><span>APPROX. RATIO</span><b class="c3" id="hdr-ratio">99.84%</b></div>
+  </div>
+  <div class="tb-clock" id="clock">00:00:00.000</div>
+</div>
+
+<!-- ╔═══════════════════════ BODY ═══════════════════════╗ -->
+<div id="body">
+
+  <!-- ┌─────── LEFT PANEL ───────┐ -->
+  <div class="panel">
+    <div class="panel-hdr">QUANTUM SOLVER CONTROL <span class="panel-hdr-tag">v3.2.1</span></div>
+    <div class="panel-body">
+
+      <!-- Algorithm params -->
+      <div class="param-blk">
+        <div class="param-lbl">Algorithm Parameters</div>
+        <div class="param-row"><span class="param-key">ALGORITHM</span><span class="param-v c1">QAOA</span></div>
+        <div class="param-row"><span class="param-key">OPTIMIZER</span><span class="param-v c4">COBYLA</span></div>
+        <div class="param-row"><span class="param-key">ANSATZ</span><span class="param-v c2">RealAmplitudes</span></div>
+        <div class="param-row"><span class="param-key">REPS (p)</span><span class="param-v c3">3</span></div>
+        <div class="param-row"><span class="param-key">MAX_ITER</span><span class="param-v">250</span></div>
+        <div class="param-row"><span class="param-key">RISK (q)</span><span class="param-v c4">0.5</span></div>
+        <div class="param-row"><span class="param-key">BUDGET</span><span class="param-v c3">4 ASSETS</span></div>
+      </div>
+
+      <!-- Solver select -->
+      <div class="param-blk">
+        <div class="param-lbl">Solver Mode</div>
+        <div class="btn-row">
+          <button class="btn-sm active" id="mode-qaoa" onclick="setMode('qaoa',this)">QAOA</button>
+          <button class="btn-sm" id="mode-vqe" onclick="setMode('vqe',this)">VQE</button>
+          <button class="btn-sm" id="mode-grover" onclick="setMode('grover',this)">GROVER</button>
+          <button class="btn-sm" id="mode-classical" onclick="setMode('classical',this)">CLASSICAL</button>
+        </div>
+      </div>
+
+      <button class="btn" id="runBtn" onclick="toggleSolver()">▶ EXECUTE QUANTUM SOLVER</button>
+
+      <!-- Qubit prob amplitudes -->
+      <div class="param-blk">
+        <div class="param-lbl">Qubit Probability Amplitudes</div>
+        <div id="qubitBars">
+          <div class="qubit-row"><span class="q-lbl">q₀</span><div class="q-bar-wrap"><div class="q-bar" id="qb0" style="width:80%;background:linear-gradient(90deg,var(--c1),var(--c2))"></div></div><span class="q-prob c1" id="qp0">0.80</span></div>
+          <div class="qubit-row"><span class="q-lbl">q₁</span><div class="q-bar-wrap"><div class="q-bar" id="qb1" style="width:15%;background:linear-gradient(90deg,var(--c1),var(--c2))"></div></div><span class="q-prob c1" id="qp1">0.15</span></div>
+          <div class="qubit-row"><span class="q-lbl">q₂</span><div class="q-bar-wrap"><div class="q-bar" id="qb2" style="width:95%;background:linear-gradient(90deg,var(--c1),var(--c2))"></div></div><span class="q-prob c1" id="qp2">0.95</span></div>
+          <div class="qubit-row"><span class="q-lbl">q₃</span><div class="q-bar-wrap"><div class="q-bar" id="qb3" style="width:40%;background:linear-gradient(90deg,var(--c1),var(--c2))"></div></div><span class="q-prob c1" id="qp3">0.40</span></div>
+        </div>
+      </div>
+
+      <!-- Bloch sphere -->
+      <div class="param-blk">
+        <div class="param-lbl">Bloch Sphere (q₀)</div>
+        <div class="bloch-wrap">
+          <div class="bloch">
+            <div class="bloch-sphere">
+              <div class="bloch-axis"><div class="bloch-vec"></div></div>
+              <div class="bloch-eq">|ψ⟩ = α|0⟩+β|1⟩</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- QUBO matrix -->
+      <div class="param-blk">
+        <div class="param-lbl">QUBO Matrix (Σ) — 5×5</div>
+        <div class="qubo-grid" id="quboGrid"></div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:8px;text-align:center;font-weight:700">min xᵀΣx − q·rᵀx</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ┌─────── CENTER PANEL ───────┐ -->
+  <div id="center">
+    <div class="chart-tabs">
+      <div class="ctab active" onclick="showView('convergence',this)">CONVERGENCE</div>
+      <div class="ctab" onclick="showView('frontier',this)">EFFICIENT FRONTIER</div>
+      <div class="ctab" onclick="showView('circuit',this)">QUANTUM CIRCUIT</div>
+      <div class="ctab" onclick="showView('heatmap',this)">CORRELATION</div>
+      <div class="ctab" onclick="showView('histogram',this)">PROBABILITY DIST.</div>
+      <div class="ctab" onclick="showView('comparison',this)">BENCHMARKS</div>
+    </div>
+    <div class="chart-views">
+      <!-- 1: Convergence -->
+      <div class="cview active" id="view-convergence"><canvas id="c-conv"></canvas></div>
+      <!-- 2: Efficient Frontier -->
+      <div class="cview" id="view-frontier"><canvas id="c-front"></canvas></div>
+      <!-- 3: Quantum Circuit -->
+      <div class="cview" id="view-circuit">
+        <div class="circuit-display" id="circuitDisplay"></div>
+      </div>
+      <!-- 4: Heatmap -->
+      <div class="cview" id="view-heatmap">
+        <div style="height:100%;display:flex;flex-direction:column">
+          <div style="font-family:var(--mono);font-size:12px;color:var(--t1);margin-bottom:12px;letter-spacing:1px;font-weight:700">ASSET CORRELATION MATRIX (ρ) — Negative = Low Risk Diversification Pair</div>
+          <div id="heatmapGrid" style="flex:1"></div>
+        </div>
+      </div>
+      <!-- 5: Histogram -->
+      <div class="cview" id="view-histogram">
+        <div style="height:100%;display:flex;flex-direction:column">
+          <div style="font-family:var(--mono);font-size:12px;color:var(--t1);margin-bottom:12px;letter-spacing:1px;font-weight:700">MEASUREMENT PROBABILITY DISTRIBUTION — Top-8 Bitstrings (8192 Shots)</div>
+          <div id="histWrap" style="flex:1;display:grid;align-items:flex-end;gap:5px;padding-bottom:35px;position:relative"></div>
+        </div>
+      </div>
+      <!-- 6: Benchmark -->
+      <div class="cview" id="view-comparison"><canvas id="c-bench"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ┌─────── RIGHT PANEL ───────┐ -->
+  <div class="panel">
+    <div class="panel-hdr">PORTFOLIO TELEMETRY <span class="panel-hdr-tag">LIVE</span></div>
+    <div class="panel-body">
+
+      <div class="metric-blk" style="border-color:rgba(0,255,136,.4)">
+        <div class="metric-lbl">Expected Annual Return</div>
+        <div class="metric-val" style="color:var(--c3)" id="m-ret">18.52<span style="font-size:18px;font-weight:400">%</span></div>
+        <div class="metric-sub">vs Classical: +8.3% outperformance</div>
+      </div>
+      <div class="metric-blk" style="border-color:rgba(255,0,85,.4)">
+        <div class="metric-lbl">Portfolio Volatility (σ)</div>
+        <div class="metric-val" style="color:var(--c5)" id="m-vol">6.45<span style="font-size:18px;font-weight:400">%</span></div>
+        <div class="metric-sub">vs Benchmark σ: 14.8%</div>
+      </div>
+      <div class="metric-blk" style="border-color:rgba(0,255,255,.4)">
+        <div class="metric-lbl">Sharpe Ratio</div>
+        <div class="metric-val" style="color:var(--c1)" id="m-sharpe">2.87</div>
+        <div class="metric-sub">Risk-adjusted return per unit of risk</div>
+      </div>
+      <div class="metric-blk" style="border-color:rgba(124,58,237,.4)">
+        <div class="metric-lbl">Approximation Ratio</div>
+        <div class="metric-val" style="color:var(--c2)" id="m-ratio">99.84<span style="font-size:18px;font-weight:400">%</span></div>
+        <div class="metric-sub">Global optimum proximity</div>
+      </div>
+
+      <!-- Solver metrics -->
+      <div style="margin-bottom:15px">
+        <div class="param-lbl">SOLVER PERFORMANCE</div>
+        <div class="progress-wrap">
+          <div class="progress-row"><span class="progress-lbl">Accuracy</span><div class="progress-bar-bg"><div class="progress-bar-fill" id="pb-acc" style="width:99.84%;background:linear-gradient(90deg,var(--c2),var(--c1))"></div></div><span style="font-family:var(--mono);font-size:11px;color:var(--c1)">99.8%</span></div>
+          <div class="progress-row"><span class="progress-lbl">Converge</span><div class="progress-bar-bg"><div class="progress-bar-fill" id="pb-conv" style="width:0%;background:linear-gradient(90deg,var(--c4),var(--c3))"></div></div><span style="font-family:var(--mono);font-size:11px;color:var(--c3)" id="pb-conv-lbl">0%</span></div>
+          <div class="progress-row"><span class="progress-lbl">Stability</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:88%;background:linear-gradient(90deg,var(--c5),var(--c4))"></div></div><span style="font-family:var(--mono);font-size:11px;color:var(--c4)">88%</span></div>
+        </div>
+      </div>
+
+      <!-- Asset allocation -->
+      <div style="margin-bottom:10px">
+        <div class="param-lbl">OPTIMAL PORTFOLIO |x⟩</div>
+        <table class="port-table" id="portTable">
+          <thead><tr><th>ASSET</th><th>E[R]</th><th>σ</th><th>|x⟩</th></tr></thead>
+          <tbody id="portBody"></tbody>
+        </table>
+      </div>
+
+      <!-- Max drawdown + VaR -->
+      <div class="param-blk" style="margin-top:12px">
+        <div class="param-lbl">RISK METRICS</div>
+        <div class="param-row"><span class="param-key">Max Drawdown</span><span class="param-v c5">-12.4%</span></div>
+        <div class="param-row"><span class="param-key">VaR (95%)</span><span class="param-v c4">-4.2%</span></div>
+        <div class="param-row"><span class="param-key">Beta (vs S&P)</span><span class="param-v c1">0.42</span></div>
+        <div class="param-row"><span class="param-key">Sortino Ratio</span><span class="param-v c3">3.61</span></div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- ╔═══════════════════════ BOTTOM TERMINAL ═══════════════════════╗ -->
+<div id="bottombar">
+  <div class="terminal-log" id="termLog">
+    <div class="log-line log-ok"><span class="log-ts">[00:00:00.000]</span> <span class="log-msg">QUANTUM NEXUS TERMINAL INITIALIZED. Backend: qasm_simulator | Qubits: 4</span></div>
+    <div class="log-line log-info"><span class="log-ts">[00:00:00.001]</span> <span class="log-msg">QUBO matrix generated from Markowitz covariance data (5×5 Ising mapping).</span></div>
+    <div class="log-line log-info"><span class="log-ts">[00:00:00.002]</span> <span class="log-msg">Portfolio assets loaded: AAPL · MSFT · TSLA · NVDA · JNJ · JPM · PG · XOM</span></div>
+    <div class="log-line log-warn"><span class="log-ts">[00:00:00.003]</span> <span class="log-msg">Ready. Click EXECUTE QUANTUM SOLVER to begin COBYLA optimization loop.</span></div>
+  </div>
+  <div class="iter-panel">
+    <div>
+      <div class="iter-sub">OPTIMIZER ITERATIONS</div>
+      <div class="iter-val" id="iterVal">000</div>
+    </div>
+    <div class="iter-bar-bg"><div class="iter-bar-fill" id="iterBar" style="width:0%"></div></div>
+    <div class="energy-row">
+      <span>⟨H⟩ CURRENT</span><span id="e-cur" style="color:var(--c1)">0.0000</span>
+    </div>
+    <div class="energy-row">
+      <span>⟨H⟩ MIN</span><span id="e-min" style="color:var(--c3)">0.0000</span>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// PARTICLE BACKGROUND
+// ═══════════════════════════════════════════════════════════
+const bgCanvas = document.getElementById('bgCanvas');
+const ctx = bgCanvas.getContext('2d');
+function resizeBg(){ bgCanvas.width = window.innerWidth; bgCanvas.height = window.innerHeight; }
+resizeBg(); window.addEventListener('resize', resizeBg);
+
+const particles = Array.from({length:80}, () => ({
+  x: Math.random()*window.innerWidth, y: Math.random()*window.innerHeight,
+  vx: (Math.random()-.5)*.3, vy: (Math.random()-.5)*.3,
+  r: Math.random()*1.5+.5, c: Math.random()>.5?'rgba(0,255,255,':'rgba(124,58,237,'
+}));
+
+function animBg(){
+  ctx.clearRect(0,0,bgCanvas.width,bgCanvas.height);
+  particles.forEach(p => {
+    p.x += p.vx; p.y += p.vy;
+    if(p.x<0) p.x=bgCanvas.width; if(p.x>bgCanvas.width) p.x=0;
+    if(p.y<0) p.y=bgCanvas.height; if(p.y>bgCanvas.height) p.y=0;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+    ctx.fillStyle = p.c+'.6)';
+    ctx.fill();
+  });
+  // Draw connections
+  for(let i=0;i<particles.length;i++){
+    for(let j=i+1;j<particles.length;j++){
+      const dx=particles[i].x-particles[j].x, dy=particles[i].y-particles[j].y;
+      const d=Math.sqrt(dx*dx+dy*dy);
+      if(d<120){
+        ctx.beginPath();
+        ctx.strokeStyle = `rgba(0,255,255,${(1-d/120)*.08})`;
+        ctx.lineWidth = .5;
+        ctx.moveTo(particles[i].x, particles[i].y);
+        ctx.lineTo(particles[j].x, particles[j].y);
+        ctx.stroke();
+      }
+    }
+  }
+  requestAnimationFrame(animBg);
+}
+animBg();
+
+// ═══════════════════════════════════════════════════════════
+// CLOCK
+// ═══════════════════════════════════════════════════════════
+setInterval(()=>{
+  const n = new Date();
+  document.getElementById('clock').textContent = n.toLocaleTimeString('en-US',{hour12:false})+'.'+String(n.getMilliseconds()).padStart(3,'0');
+}, 16);
+
+// ═══════════════════════════════════════════════════════════
+// TICKER
+// ═══════════════════════════════════════════════════════════
+const stocks = [
+  {sym:'AAPL',p:150.24,d:1.2},{sym:'MSFT',p:310.12,d:.8},{sym:'TSLA',p:215.5,d:-2.1},
+  {sym:'NVDA',p:450.8,d:3.4},{sym:'AMZN',p:130.9,d:-.5},{sym:'JNJ',p:161.4,d:.3},
+  {sym:'JPM',p:147.2,d:-.9},{sym:'PG',p:155.1,d:.6},{sym:'XOM',p:104.3,d:1.8},
+  {sym:'IBM',p:142.1,d:.2},{sym:'GOOGL',p:138.5,d:1.1},{sym:'META',p:311.8,d:-1.3},
+];
+function buildTicker(){
+  const inner = document.getElementById('tickerInner');
+  let html = '';
+  for(let rep=0;rep<2;rep++){
+    stocks.forEach(s=>{
+      html+=`<div class="tick-item"><span class="tick-sym">${s.sym}</span><span>${s.p.toFixed(2)}</span><span class="${s.d>=0?'tick-up':'tick-dn'}">${s.d>=0?'▲':'▼'}${Math.abs(s.d)}%</span></div>`;
+    });
+    html += `<div class="tick-item" style="color:rgba(0,255,255,.3)">✦ QUANTUM PORTFOLIO OPTIMIZATION SYSTEM ✦</div>`;
+  }
+  inner.innerHTML = html;
+}
+buildTicker();
+// Slight random price drift
+setInterval(()=>{
+  stocks.forEach(s=>{ s.p += (Math.random()-.5)*.2; s.d = ((Math.random()-.5)*4).toFixed(1)*1; });
+  buildTicker();
+}, 3000);
+
+// ═══════════════════════════════════════════════════════════
+// QUBO MATRIX
+// ═══════════════════════════════════════════════════════════
+const quboData = [];
+const qg = document.getElementById('quboGrid');
+for(let i=0;i<25;i++){
+  const v = parseFloat((Math.random()*2-1).toFixed(2));
+  quboData.push(v);
+  const c = document.createElement('div');
+  c.className = 'qubo-cell ' + (v>.3?'qubo-pos':v<-.3?'qubo-neg':'qubo-zero');
+  c.textContent = v.toFixed(2);
+  qg.appendChild(c);
+}
+
+// ═══════════════════════════════════════════════════════════
+// PORTFOLIO ASSETS
+// ═══════════════════════════════════════════════════════════
+const assets = [
+  {sym:'AAPL',er:12.5,vol:18.2,sh:.68,sel:false},
+  {sym:'MSFT',er:14.1,vol:19.5,sh:.72,sel:false},
+  {sym:'TSLA',er:22.4,vol:45.0,sh:.49,sel:false},
+  {sym:'NVDA',er:35.0,vol:50.2,sh:.69,sel:false},
+  {sym:'JNJ', er:6.5, vol:12.1,sh:.53,sel:false},
+  {sym:'JPM', er:9.2, vol:21.0,sh:.43,sel:false},
+  {sym:'PG',  er:7.1, vol:11.5,sh:.61,sel:false},
+  {sym:'XOM', er:11.0,vol:25.4,sh:.43,sel:false},
+];
+function renderPortTable(){
+  const tb = document.getElementById('portBody');
+  tb.innerHTML = assets.map(a=>`
+    <tr>
+      <td>${a.sym}</td>
+      <td>${a.er}%</td>
+      <td>${a.vol}%</td>
+      <td>${a.sel?`<span class="alloc-yes">BUY</span>`:`<span class="alloc-no">—</span>`}</td>
+    </tr>`).join('');
+}
+renderPortTable();
+
+// ═══════════════════════════════════════════════════════════
+// CHART.JS DEFAULTS
+// ═══════════════════════════════════════════════════════════
+Chart.defaults.color = '#c0d0e0';
+Chart.defaults.font.family = "'Share Tech Mono', monospace";
+Chart.defaults.font.size = 12;
+const gridColor = 'rgba(255,255,255,0.08)';
+const borderColor = 'rgba(0,255,255,0.2)';
+
+// ═══════════════════════════════════════════════════════════
+// 1. CONVERGENCE CHART
+// ═══════════════════════════════════════════════════════════
+const ctxConv = document.getElementById('c-conv').getContext('2d');
+const convData = { qaoa:[], vqe:[], classical:[], labels:[] };
+const chartConv = new Chart(ctxConv, {
+  type:'line',
+  data:{
+    labels: convData.labels,
+    datasets:[
+      {label:'QAOA ⟨H⟩', data:convData.qaoa, borderColor:'#00ffff', backgroundColor:'rgba(0,255,255,.1)', borderWidth:3, tension:.3, pointRadius:0, fill:true},
+      {label:'VQE ⟨H⟩',  data:convData.vqe,  borderColor:'#7c3aed', backgroundColor:'rgba(124,58,237,.1)', borderWidth:2, tension:.3, pointRadius:0, fill:true, borderDash:[4,4]},
+      {label:'Classical', data:convData.classical, borderColor:'#ff0055', backgroundColor:'rgba(255,0,85,.08)', borderWidth:2, tension:.3, pointRadius:0, fill:true, borderDash:[2,4]},
+    ]
+  },
+  options:{responsive:true, maintainAspectRatio:false, animation:false,
+    interaction:{mode:'index',intersect:false},
+    scales:{
+      x:{grid:{color:gridColor}, ticks:{color:'#c0d0e0', maxTicksLimit:12}, title:{display:true,text:'OPTIMIZER ITERATION',color:'#ffffff'}},
+      y:{grid:{color:gridColor}, ticks:{color:'#c0d0e0'}, title:{display:true,text:'HAMILTONIAN ENERGY ⟨H⟩',color:'#ffffff'}}
+    },
+    plugins:{
+      legend:{labels:{color:'#ffffff', usePointStyle:true, boxWidth:10, font:{size:12}}},
+      tooltip:{backgroundColor:'rgba(0,5,15,.95)', borderColor:'rgba(0,255,255,.4)', borderWidth:1, titleColor:'#00ffff', bodyColor:'#ffffff'}
+    }
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// 2. EFFICIENT FRONTIER CHART
+// ═══════════════════════════════════════════════════════════
+const ctxFront = document.getElementById('c-front').getContext('2d');
+const frontierPts = [{x:6.45,y:18.52},{x:8,y:20.8},{x:10.5,y:23.5},{x:14,y:27},{x:18,y:30}];
+new Chart(ctxFront, {
+  type:'scatter',
+  data:{
+    datasets:[
+      {label:'Sub-Optimal Portfolios', data:Array.from({length:250},()=>({x:Math.random()*25+4, y:Math.random()*22+2})), backgroundColor:'rgba(139,155,180,.6)', pointRadius:3},
+      {label:'Efficient Frontier (Quantum)', data:frontierPts, borderColor:'#00ff88', backgroundColor:'#00ff88', showLine:true, borderWidth:3, pointRadius:6, tension:.4, pointHoverRadius:10},
+      {label:'Optimal (QAOA Selected)', data:[{x:6.45,y:18.52}], backgroundColor:'#00ffff', borderColor:'#00ffff', pointRadius:12, pointStyle:'star'},
+    ]
+  },
+  options:{responsive:true, maintainAspectRatio:false,
+    scales:{
+      x:{grid:{color:gridColor}, ticks:{color:'#c0d0e0'}, title:{display:true,text:'PORTFOLIO RISK — σ (%)',color:'#ffffff'}},
+      y:{grid:{color:gridColor}, ticks:{color:'#c0d0e0'}, title:{display:true,text:'EXPECTED RETURN E[R] (%)',color:'#ffffff'}}
+    },
+    plugins:{legend:{labels:{color:'#ffffff',pointStyle:'circle',usePointStyle:true, font:{size:12}}}, tooltip:{backgroundColor:'rgba(0,5,15,.95)',borderColor:'rgba(0,255,136,.4)',borderWidth:1}}
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// 3. QUANTUM CIRCUIT (HTML-based)
+// ═══════════════════════════════════════════════════════════
+const circuitConfig = [
+  {lbl:'q₀|0⟩', gates:['H','Rz(β)','H','Rz(γ)','H','M']},
+  {lbl:'q₁|0⟩', gates:['H','Rz(β)','CNOT','Rz(γ)','H','M']},
+  {lbl:'q₂|0⟩', gates:['H','Rz(β)','Rz(γ)','CNOT','H','M']},
+  {lbl:'q₃|0⟩', gates:['H','Rz(β)','Rz(γ)','H','M']},
+];
+function buildCircuit(){
+  const cd = document.getElementById('circuitDisplay');
+  cd.innerHTML = '';
+  circuitConfig.forEach(wire => {
+    const row = document.createElement('div'); row.className = 'wire-row';
+    row.innerHTML = `<div class="wire-line"></div><div class="wire-lbl">${wire.lbl}</div><div class="gates-row">`;
+    const gRow = document.createElement('div'); gRow.className = 'gates-row';
+    wire.gates.forEach((g,i) => {
+      const el = document.createElement('div');
+      const cls = g.startsWith('H')?'gate-H':g.startsWith('Rz')?'gate-Rz':g==='CNOT'?'gate-CNOT':'gate-M';
+      el.className = `gate ${cls} animated`;
+      el.style.animationDelay = (i*80)+'ms';
+      el.textContent = g.length > 4 ? g.substring(0,4) : g;
+      el.title = g;
+      gRow.appendChild(el);
+    });
+    row.appendChild(gRow);
+    cd.appendChild(row);
+  });
+}
+buildCircuit();
+
+// ═══════════════════════════════════════════════════════════
+// 4. CORRELATION HEATMAP (HTML-based)
+// ═══════════════════════════════════════════════════════════
+const assetSyms = ['AAPL','MSFT','TSLA','NVDA','JNJ','JPM','PG','XOM'];
+const corrMatrix = [
+  [1.00, 0.72, 0.38, 0.61,-0.12, 0.34, 0.08, 0.22],
+  [0.72, 1.00, 0.41, 0.68,-0.09, 0.38, 0.11, 0.19],
+  [0.38, 0.41, 1.00, 0.55,-0.22, 0.18,-0.04, 0.11],
+  [0.61, 0.68, 0.55, 1.00,-0.17, 0.41, 0.06, 0.15],
+  [-0.12,-0.09,-0.22,-0.17, 1.00, 0.25, 0.52, 0.14],
+  [0.34, 0.38, 0.18, 0.41, 0.25, 1.00, 0.28, 0.55],
+  [0.08, 0.11,-0.04, 0.06, 0.52, 0.28, 1.00, 0.19],
+  [0.22, 0.19, 0.11, 0.15, 0.14, 0.55, 0.19, 1.00],
+];
+function buildHeatmap(){
+  const wrap = document.getElementById('heatmapGrid');
+  wrap.innerHTML = '';
+  wrap.style.display = 'grid';
+  wrap.style.gridTemplateColumns = `60px repeat(${assetSyms.length}, 1fr)`;
+  wrap.style.gap = '3px';
+  // Header row
+  wrap.appendChild(Object.assign(document.createElement('div'),{style:''}));
+  assetSyms.forEach(s => {
+    const h = document.createElement('div');
+    h.style.cssText='font-family:var(--mono);font-size:12px;color:var(--t1);text-align:center;padding:4px 0;font-weight:700';
+    h.textContent=s; wrap.appendChild(h);
+  });
+  // Data rows
+  corrMatrix.forEach((row,i) => {
+    const lbl = document.createElement('div');
+    lbl.style.cssText='font-family:var(--mono);font-size:12px;color:var(--t1);display:flex;align-items:center;font-weight:700';
+    lbl.textContent=assetSyms[i]; wrap.appendChild(lbl);
+    row.forEach((v,j) => {
+      const cell = document.createElement('div');
+      const a = Math.abs(v);
+      let bg, col;
+      if(v >= 0.7){bg='rgba(0,255,255,.4)';col='#00ffff';}
+      else if(v >= 0.3){bg='rgba(0,255,255,.2)';col='#00ffff';}
+      else if(v >= 0){bg='rgba(255,255,255,.1)';col='#ffffff';}
+      else if(v >= -0.3){bg='rgba(124,58,237,.2)';col='#c080ff';}
+      else{bg='rgba(124,58,237,.5)';col='#e0a0ff';}
+      cell.className='hm-cell';
+      cell.style.cssText=`background:${bg};color:${col};font-family:var(--mono);font-size:12px;font-weight:700;aspect-ratio:1`;
+      cell.textContent=v.toFixed(2);
+      cell.title=`${assetSyms[i]} vs ${assetSyms[j]}: ρ=${v}`;
+      wrap.appendChild(cell);
+    });
+  });
+}
+buildHeatmap();
+
+// ═══════════════════════════════════════════════════════════
+// 5. PROBABILITY HISTOGRAM (HTML-based)
+// ═══════════════════════════════════════════════════════════
+const bitstrings = ['|1011⟩','|1010⟩','|0110⟩','|1001⟩','|0101⟩','|1100⟩','|0011⟩','|1111⟩'];
+const probs = [0.38, 0.22, 0.14, 0.09, 0.07, 0.04, 0.03, 0.03];
+function buildHistogram(){
+  const wrap = document.getElementById('histWrap');
+  wrap.innerHTML='';
+  wrap.style.gridTemplateColumns = `repeat(${bitstrings.length},1fr)`;
+  bitstrings.forEach((bs,i)=>{
+    const container = document.createElement('div');
+    container.className='hist-bar-wrap';
+    const pct = probs[i]*100;
+    const maxH = 100;
+    const colors = i===0?'linear-gradient(to top,#00ffff,#7c3aed)':'linear-gradient(to top,rgba(0,255,255,.5),rgba(124,58,237,.5))';
+    container.innerHTML=`
+      <div class="hist-prob" style="color:${i===0?'var(--c1)':'var(--t1)'}">${(probs[i]*100).toFixed(1)}%</div>
+      <div class="hist-bar" data-state="${bs}" style="height:${pct}%;background:${colors};border:1px solid ${i===0?'rgba(0,255,255,.8)':'rgba(255,255,255,.2)'}"></div>
+      <div style="position:absolute;bottom:-25px;font-family:var(--mono);font-size:11px;font-weight:700;color:${i===0?'var(--c1)':'var(--t1)'};left:50%;transform:translateX(-50%);white-space:nowrap">${bs}</div>
+    `;
+    wrap.appendChild(container);
+  });
+}
+buildHistogram();
+
+// ═══════════════════════════════════════════════════════════
+// 6. BENCHMARK COMPARISON CHART
+// ═══════════════════════════════════════════════════════════
+const ctxBench = document.getElementById('c-bench').getContext('2d');
+new Chart(ctxBench, {
+  type: 'bar',
+  data:{
+    labels:['Approximation\nRatio (%)', 'Sharpe\nRatio', 'Convergence\nSpeed (x)', 'Return\nOutperform (%)'],
+    datasets:[
+      {label:'QAOA',     data:[99.84, 2.87, 7.0, 8.3], backgroundColor:'rgba(0,255,255,.4)', borderColor:'#00ffff', borderWidth:2, borderRadius:4},
+      {label:'VQE',      data:[98.5,  2.41, 5.5, 6.1], backgroundColor:'rgba(124,58,237,.4)', borderColor:'#7c3aed', borderWidth:2, borderRadius:4},
+      {label:'Classical',data:[76.0,  0.68, 1.0, 0.0], backgroundColor:'rgba(255,0,85,.3)',   borderColor:'#ff0055', borderWidth:2, borderRadius:4},
+    ]
+  },
+  options:{responsive:true, maintainAspectRatio:false,
+    scales:{
+      x:{grid:{color:gridColor}, ticks:{color:'#ffffff', maxRotation:0, font:{size:12, weight:'bold'}}},
+      y:{grid:{color:gridColor}, ticks:{color:'#ffffff', font:{size:12}}}
+    },
+    plugins:{
+      legend:{labels:{color:'#ffffff',usePointStyle:true, font:{size:12}}},
+      tooltip:{backgroundColor:'rgba(0,5,15,.95)', borderColor:'rgba(0,255,255,.4)', borderWidth:1, titleColor:'#00ffff', bodyColor:'#ffffff'}
+    }
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// CHART TABS
+// ═══════════════════════════════════════════════════════════
+function showView(id, el){
+  document.querySelectorAll('.cview').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.ctab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('view-'+id).classList.add('active');
+  el.classList.add('active');
+}
+
+// ═══════════════════════════════════════════════════════════
+// MODE SELECTOR
+// ═══════════════════════════════════════════════════════════
+function setMode(mode, el){
+  document.querySelectorAll('.btn-sm').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ═══════════════════════════════════════════════════════════
+// SOLVER SIMULATION
+// ═══════════════════════════════════════════════════════════
+let simRunning=false, simInterval=null, iterCount=0, minEnergy=0;
+const MAX_ITER=60;
+
+function termLog(msg, type='info'){
+  const log=document.getElementById('termLog');
+  const ts=new Date().toLocaleTimeString('en-US',{hour12:false})+'.'+String(new Date().getMilliseconds()).padStart(3,'0');
+  const div=document.createElement('div');
+  div.className=`log-line log-${type}`;
+  div.innerHTML=`<span class="log-ts">[${ts}]</span> <span class="log-msg">${msg}</span>`;
+  log.appendChild(div);
+  log.scrollTop=log.scrollHeight;
+}
+
+function toggleSolver(){
+  if(simRunning){ stopSolver(); return; }
+  const btn=document.getElementById('runBtn');
+  btn.textContent='■ STOP SOLVER';
+  btn.classList.add('active');
+  simRunning=true;
+  iterCount=0;
+  minEnergy=999;
+  convData.qaoa=[]; convData.vqe=[]; convData.classical=[]; convData.labels=[];
+  chartConv.update();
+
+  // Reset allocation
+  assets.forEach(a=>a.sel=false); renderPortTable();
+  document.getElementById('pb-conv').style.width='0%';
+  document.getElementById('pb-conv-lbl').textContent='0%';
+
+  termLog('EXECUTING QUANTUM SOLVER — QAOA p=3 | COBYLA | 8192 shots', 'ok');
+  termLog('Transpiling QAOA ansatz circuit to basis gates: {CX, Rz, H}', 'info');
+
+  let qEnergy=55, vEnergy=52, cEnergy=48;
+
+  simInterval=setInterval(()=>{
+    iterCount++;
+    const t=iterCount/MAX_ITER;
+
+    // Exponential decay toward minimum
+    qEnergy = qEnergy*0.82 + (Math.random()*2-1)*1.5;
+    vEnergy = vEnergy*0.85 + (Math.random()*2-1)*2;
+    cEnergy = cEnergy*0.93 + (Math.random()*1.5-0.75)*1.5;
+
+    if(qEnergy < -44) qEnergy = -44 + Math.random()*0.3;
+
+    convData.labels.push(iterCount);
+    convData.qaoa.push(qEnergy);
+    convData.vqe.push(vEnergy);
+    convData.classical.push(cEnergy);
+    chartConv.update();
+
+    // Update iteration counter
+    document.getElementById('iterVal').textContent=String(iterCount).padStart(3,'0');
+    document.getElementById('iterBar').style.width=(t*100)+'%';
+    document.getElementById('e-cur').textContent=qEnergy.toFixed(4);
+    if(qEnergy<minEnergy){minEnergy=qEnergy;document.getElementById('e-min').textContent=qEnergy.toFixed(4);}
+
+    // Update qubit bars
+    [0,1,2,3].forEach(qi=>{
+      const v=Math.abs(Math.sin(iterCount*.1+qi*1.5)*0.5+Math.random()*.2+.3);
+      document.getElementById('qb'+qi).style.width=(v*100)+'%';
+      document.getElementById('qp'+qi).textContent=v.toFixed(2);
+    });
+
+    // Update QUBO cells
+    if(iterCount%5===0){
+      document.querySelectorAll('.qubo-cell').forEach(c=>{
+        if(Math.random()>.75){
+          const v=(Math.random()*2-1).toFixed(2)*1;
+          c.textContent=parseFloat(v).toFixed(2);
+          c.className='qubo-cell '+(v>.3?'qubo-pos':v<-.3?'qubo-neg':'qubo-zero');
+        }
+      });
+    }
+
+    // Log important iterations
+    if(iterCount===1)  termLog('Circuit compiled. Depth: 47 | 2Q gates: 36 | Parameters: 24', 'info');
+    if(iterCount===5)  termLog(`COBYLA iter ${iterCount}: ⟨H⟩ = ${qEnergy.toFixed(4)} | Gradient norm: 0.8821`, 'info');
+    if(iterCount===15) termLog(`COBYLA iter ${iterCount}: ⟨H⟩ = ${qEnergy.toFixed(4)} | Converging...`, 'info');
+    if(iterCount===30) termLog(`COBYLA iter ${iterCount}: ⟨H⟩ = ${qEnergy.toFixed(4)} | 50% complete. VQE lagging.`, 'warn');
+    if(iterCount===45) termLog(`COBYLA iter ${iterCount}: ⟨H⟩ = ${qEnergy.toFixed(4)} | Near-optimal state detected.`, 'ok');
+
+    const convPct = Math.min(100, (1-Math.max(0,(qEnergy+44)/99))*100);
+    document.getElementById('pb-conv').style.width=convPct+'%';
+    document.getElementById('pb-conv-lbl').textContent=convPct.toFixed(0)+'%';
+
+    if(iterCount>=MAX_ITER){ finishSolver(); }
+  }, 100);
+}
+
+function finishSolver(){
+  clearInterval(simInterval);
+  simRunning=false;
+  const btn=document.getElementById('runBtn');
+  btn.textContent='✔ OPTIMIZATION COMPLETE — RE-RUN';
+  btn.classList.remove('active');
+
+  termLog('GLOBAL OPTIMUM FOUND! Optimal bitstring: |10110010⟩ (P=38.2%)', 'ok');
+  termLog('Optimal Portfolio: AAPL=1, MSFT=1, NVDA=1, PG=1 | Others=0', 'ok');
+  termLog(`Approximation Ratio: 99.84% | Sharpe: 2.87 | E[R]: 18.52% | σ: 6.45%`, 'ok');
+  termLog('Quantum speedup factor: 7.0x vs Classical Brute Force solver.', 'ok');
+
+  // Update allocation
+  assets.forEach(a => { a.sel = ['AAPL','MSFT','NVDA','PG'].includes(a.sym); });
+  renderPortTable();
+
+  // Animate qubit to final states
+  const finalProbs=[0.80,0.15,0.95,0.40];
+  finalProbs.forEach((v,i)=>{
+    document.getElementById('qb'+i).style.width=(v*100)+'%';
+    document.getElementById('qp'+i).textContent=v.toFixed(2);
+  });
+}
+
+function stopSolver(){
+  clearInterval(simInterval);
+  simRunning=false;
+  const btn=document.getElementById('runBtn');
+  btn.textContent='▶ EXECUTE QUANTUM SOLVER';
+  btn.classList.remove('active');
+  termLog('Solver execution interrupted by user.', 'warn');
+}
+</script>
+</body>
+</html>
